@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "mireaattendanceapp/proto/GetLearnRatingScoreReportForStudentInVisitingLog;proto";
+
+service GetLearnRatingScoreReportForStudentInVisitingLog{
+    rpc GetLearnRatingScoreReportForStudentInVisitingLog(GetScoreAndVisitngRequest) returns (GetScoreAndVisitngResponse);
+}
+
+message GetScoreAndVisitngRequest{
+    string id = 1; //eee7152e-a195-4696-b37b-cc83da0afe59
+}
+
+message GetScoreAndVisitngResponse{
+
+}
