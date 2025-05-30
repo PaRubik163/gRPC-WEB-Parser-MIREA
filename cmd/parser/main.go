@@ -12,9 +12,55 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-resty/resty/v2"
 	"google.golang.org/protobuf/proto"
+	respPars "mireaattendanceapp/internal/grpcweb"
 	gmi "mireaattendanceapp/proto/GetAvailableVisitingLogsOfStudent"
 	glrsrfsv "mireaattendanceapp/proto/GetLearnRatingScoreReportForStudentInVisitingLog"
 )
+
+func Logging(client *resty.Client) {
+	client.SetHeader("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 8_4_1; like Mac OS X) AppleWebKit/602.3 (KHTML, like Gecko)  Chrome/49.0.3440.106 Mobile Safari/601.9")
+	client.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
+
+	jar, _ := cookiejar.New(nil)
+	client.SetCookieJar(jar)
+
+	if _, err := client.R().Get("https://attendance-app.mirea.ru/"); err != nil {
+		log.Fatal(err)
+	}
+
+	//csrf токен
+	resp, err := client.R().Get("https://attendance.mirea.ru/api/auth/login?redirectUri=https%3A%2F%2Fattendance-app.mirea.ru&rememberMe=True")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(resp.String()))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	csrfToken := doc.Find("input[name='csrfmiddlewaretoken']").AttrOr("value", "#")
+	nextToken := doc.Find("input[name='next']").AttrOr("value", "#")
+
+	_, err = client.R().
+		SetFormData(map[string]string{
+			"csrfmiddlewaretoken": csrfToken,
+			"login":               "eremushkin.g.r@edu.mirea.ru",
+			"password":            "JoJo24578!",
+			"next":                nextToken,
+		}).
+		SetHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7").
+		SetHeader("content-type", "application/x-www-form-urlencoded").
+		SetHeader("origin", "https://login.mirea.ru").
+		SetHeader("referer", "https://login.mirea.ru/login/?next=/oauth2/v1/authorize/%3Fclient_id%3DRkDSYWk7OPYsJ3KVehRbHRfjxdjIgmiCJ8j8IdvO8%26scope%3Dbasic%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fattendance.mirea.ru%252Fapi%252Fmireaauth%26state%3Doauth_state%253A01970632-7fed-747a-a1c6-7dda25f047f1").
+		Post("https://login.mirea.ru/login/")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 
 func callGetAvailableVisitingLogsOfStudent(client *resty.Client) string {
 	req := &gmi.GetAvailableVisitingLogsOfStudentRequest{}
@@ -55,51 +101,6 @@ func callGetAvailableVisitingLogsOfStudent(client *resty.Client) string {
 	return UUID
 }
 
-func Logging(client *resty.Client) {
-	client.SetHeader("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 8_4_1; like Mac OS X) AppleWebKit/602.3 (KHTML, like Gecko)  Chrome/49.0.3440.106 Mobile Safari/601.9")
-	client.SetRedirectPolicy(resty.FlexibleRedirectPolicy(10))
-
-	jar, _ := cookiejar.New(nil)
-	client.SetCookieJar(jar)
-
-	if _, err := client.R().Get("https://attendance-app.mirea.ru/"); err != nil {
-		log.Fatal(err)
-	}
-
-	//csrf токен
-	resp, err := client.R().Get("https://attendance.mirea.ru/api/auth/login?redirectUri=https%3A%2F%2Fattendance-app.mirea.ru&rememberMe=True")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(strings.NewReader(resp.String()))
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	csrfToken := doc.Find("input[name='csrfmiddlewaretoken']").AttrOr("value", "#")
-	nextToken := doc.Find("input[name='next']").AttrOr("value", "#")
-
-	_, err = client.R().
-		SetFormData(map[string]string{
-			"csrfmiddlewaretoken": csrfToken,
-			"login":               "palagnyuk.a.a@edu.mirea.ru",
-			"password":            "Aa19102006.",
-			"next":                nextToken,
-		}).
-		SetHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7").
-		SetHeader("content-type", "application/x-www-form-urlencoded").
-		SetHeader("origin", "https://login.mirea.ru").
-		SetHeader("referer", "https://login.mirea.ru/login/?next=/oauth2/v1/authorize/%3Fclient_id%3DRkDSYWk7OPYsJ3KVehRbHRfjxdjIgmiCJ8j8IdvO8%26scope%3Dbasic%26response_type%3Dcode%26redirect_uri%3Dhttps%253A%252F%252Fattendance.mirea.ru%252Fapi%252Fmireaauth%26state%3Doauth_state%253A01970632-7fed-747a-a1c6-7dda25f047f1").
-		Post("https://login.mirea.ru/login/")
-
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func main() {
 	client := resty.New()
 
@@ -107,10 +108,21 @@ func main() {
 	Logging(client)
 
 	//авторизация->gRPC запрос на первый сервис, чтобы получить ID сервис->gRPC запрос, чтобы получить данные RatingScore
-	callGetLearnRatingScoreReportForStudentInVisitingLog(client)
+	studyReport := callGetLearnRatingScoreReportForStudentInVisitingLog(client)
+
+	//Конечно, нужно декодировать в структуру из прото, но я пока не понимаю как
+	res := respPars.ParseGrpcResponse(studyReport)
+
+	for _, sub := range res {
+		subjectName, _ := sub["name"].(string)
+		visitsScore, _ := sub["attendance"].(float64)
+		semestrScore, _ := sub["current_control"].(float64)
+		fmt.Println(subjectName, "--------", visitsScore+semestrScore)
+	}
+
 }
 
-func callGetLearnRatingScoreReportForStudentInVisitingLog(client *resty.Client) {
+func callGetLearnRatingScoreReportForStudentInVisitingLog(client *resty.Client) []byte {
 
 	UUID := callGetAvailableVisitingLogsOfStudent(client)
 	req := &glrsrfsv.GetScoreAndVisitngRequest{
@@ -144,6 +156,6 @@ func callGetLearnRatingScoreReportForStudentInVisitingLog(client *resty.Client) 
 		log.Fatal(err)
 	}
 
-	fmt.Println("Response Body: ", resp)
+	return resp.Body()
 
 }
