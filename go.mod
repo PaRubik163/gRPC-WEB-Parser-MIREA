@@ -7,7 +7,6 @@ require (
 	github.com/go-resty/resty/v2 v2.16.5
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	resty.dev/v3 v3.0.0-beta.3
 )
 
 require (

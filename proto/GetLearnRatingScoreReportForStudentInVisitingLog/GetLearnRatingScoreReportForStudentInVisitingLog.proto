@@ -11,5 +11,14 @@ message GetScoreAndVisitngRequest{
 }
 
 message GetScoreAndVisitngResponse{
+    string name = 1;
+    double current_control = 2;  // Текущий контроль (Макс. 40)
+    double attendance = 3;       // Посещения (Макс. 30)
+    double achievements = 4;     // Достижения (Макс. 10)
+    double semester_control = 5; // Семестровый контроль (Макс. 30)
+    double total = 6;
+}
 
+message GetScoreAndVisitngResponseList{
+    repeated GetScoreAndVisitngResponse responseList = 1;
 }
