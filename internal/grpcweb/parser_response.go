@@ -33,7 +33,7 @@ func ParseGrpcResponse(data []byte) []map[string]interface{} {
 						scores = append(scores, roundFloat(float64(math.Float64frombits(score)), 1))
 						pos += 8
 					}
-				} else if data[pos] == 0xD0 || data[pos] == 0xD1 { // Новый предмет
+				} else if data[pos] == 0xD0 || data[pos] == 0xD1 { // Сдедующий предмет
 					break
 				} else {
 					pos++
