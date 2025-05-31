@@ -18,7 +18,3 @@ message GetScoreAndVisitngResponse{
     double semester_control = 5; // Семестровый контроль (Макс. 30)
     double total = 6;
 }
-
-message GetScoreAndVisitngResponseList{
-    repeated GetScoreAndVisitngResponse responseList = 1;
-}
